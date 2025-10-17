@@ -6,21 +6,34 @@
 
 - 🔍 **自动备案查询** - 定期检查域名备案状态
 - 📊 **Prometheus 指标** - 导出详细的监控指标
-- 🔄 **智能重试** - 自动重试失败的查询
+- 🔄 **智能重试** - 自动重试失败的查询，支持指数退避
 - 🌐 **Web 界面** - 提供友好的状态查看界面
-- 🐳 **Docker 支持** - 完整的容器化部署方案
-- 🛡️ **防封禁机制** - 智能请求间隔避免被第三方网站封禁
+- 🐳 **Docker 支持** - 多阶段构建，完整的容器化部署方案
+- 🛡️ **防封禁机制** - 动态请求头、随机延迟、IP轮换
 - ⚡ **高性能** - 基于Spring Boot和WebFlux的响应式编程
+- 📈 **完整监控栈** - 集成Prometheus和Grafana仪表板
 
 ## 快速开始
 
 ### 环境要求
 
-- Java 17+
-- Maven 3.6+
-- Docker (可选)
+- Docker（推荐，使用多阶段构建无需本地Java环境）
+- 或者 Java 17+ + Maven 3.6+（本地开发）
 
-### 本地运行
+### 最简单的启动方式
+
+```bash
+# 1. 克隆项目
+git clone <repository-url>
+cd beian-exporter
+
+# 2. 一键构建并启动
+./build.sh && docker-compose up -d
+
+# 3. 访问 http://localhost:8080
+```
+
+### 本地开发运行
 
 ```bash
 # 编译项目
@@ -33,24 +46,24 @@ mvn package
 java -jar target/beian-exporter-1.0.0.jar
 ```
 
-### 使用构建脚本
+### 使用构建脚本（推荐）
 
 ```bash
 # 给脚本执行权限
-chmod +x build-java.sh
+chmod +x build.sh
 
-# 运行构建脚本
-./build-java.sh
+# 运行构建脚本（多阶段构建，无需本地Java环境）
+./build.sh
 ```
 
 ### Docker 运行
 
 ```bash
-# 构建并运行
-docker-compose -f docker-compose.java.yml up -d
+# 构建并运行完整监控栈
+docker-compose up -d
 
 # 查看日志
-docker-compose -f docker-compose.java.yml logs -f beian-exporter
+docker-compose logs -f beian-exporter
 ```
 
 ## 配置文件
@@ -87,7 +100,7 @@ mkdir -p ./config
 cp src/main/resources/application.yml ./config/
 
 # 使用docker-compose启动（已配置配置文件挂载）
-docker-compose -f docker-compose.java.yml up -d
+docker-compose up -d
 ```
 
 ## Prometheus 指标
@@ -131,8 +144,9 @@ curl http://localhost:8080/api/config
 1. **串行查询** - 避免并发请求
 2. **随机延迟** - 每次请求前随机延迟1-3秒
 3. **固定间隔** - 域名之间固定间隔10秒
-4. **智能重试** - 失败后指数退避重试
-5. **请求头伪装** - 模拟真实浏览器请求
+4. **智能重试** - 失败后指数退避重试，最多3次
+5. **请求头伪装** - 动态生成User-Agent、Cookie等请求头
+6. **IP轮换** - 随机生成X-Forwarded-For头模拟不同来源
 
 ## 开发
 
@@ -159,20 +173,14 @@ src/main/java/io/devops/beian/
 ### 构建和测试
 
 ```bash
-# 清理项目
-mvn clean
+# 方式1：使用多阶段Docker构建（推荐，无需本地环境）
+./build.sh
 
-# 编译
-mvn compile
-
-# 运行测试
-mvn test
-
-# 打包
-mvn package
+# 方式2：本地构建（需要Java 17+和Maven）
+mvn clean compile test package
 
 # 构建Docker镜像
-docker build -f Dockerfile.java -t beian-exporter:java .
+docker build -t beian-exporter .
 ```
 
 ## 部署
@@ -181,13 +189,13 @@ docker build -f Dockerfile.java -t beian-exporter:java .
 
 ```bash
 # 启动完整监控栈
-docker-compose -f docker-compose.java.yml up -d
+docker-compose up -d
 
 # 查看服务状态
-docker-compose -f docker-compose.java.yml ps
+docker-compose ps
 
 # 查看日志
-docker-compose -f docker-compose.java.yml logs -f
+docker-compose logs -f
 ```
 
 ### Kubernetes 部署
