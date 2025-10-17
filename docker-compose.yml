@@ -1,19 +1,15 @@
-
 services:
   beian-exporter:
-    build:
-      context: .
-      dockerfile: Dockerfile.java
+    build: .
     container_name: beian-exporter
     ports:
       - "8080:8080"
     environment:
       - JAVA_OPTS=-Xmx512m -Xms256m
       - SPRING_PROFILES_ACTIVE=docker
-      - SPRING_CONFIG_LOCATION=classpath:/application.yml,/app/config/application.yml
     volumes:
       - ./logs:/app/logs
-      - ./config:/app/config
+      - ./config:/app/config  # 外部配置文件会覆盖内部配置
     restart: unless-stopped
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
@@ -23,7 +19,6 @@ services:
       start_period: 40s
     networks:
       - monitoring
-
 
 networks:
   monitoring:

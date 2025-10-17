@@ -1,55 +1,27 @@
 #!/bin/bash
 
-# Beian Exporter Java 版本构建脚本
+# Beian Exporter 构建脚本（多阶段构建）
 
 set -e
 
-echo "🚀 开始构建 Beian Exporter Java 版本..."
+echo "🚀 开始构建 Beian Exporter（多阶段构建）..."
 
-# 检查 Java 和 Maven
+# 检查 Docker
 echo "📋 检查环境..."
-if ! command -v java &> /dev/null; then
-    echo "❌ Java 未安装，请先安装 Java 17+"
+if ! command -v docker &> /dev/null; then
+    echo "❌ Docker 未安装，请先安装 Docker"
     exit 1
 fi
 
-if ! command -v mvn &> /dev/null; then
-    echo "❌ Maven 未安装，请先安装 Maven"
-    exit 1
-fi
+# 显示Docker版本
+echo "🐳 Docker 版本:"
+docker --version
 
-# 显示版本信息
-echo "☕ Java 版本:"
-java -version
-
-echo "📦 Maven 版本:"
-mvn -version
-
-# 清理并编译
-echo "🧹 清理项目..."
-mvn clean
-
-echo "🔨 编译项目..."
-mvn compile
-
-echo "🧪 运行测试..."
-mvn test
-
-echo "📦 打包应用..."
-mvn package -DskipTests
-
-# 检查 JAR 文件
-JAR_FILE=$(find target -name "beian-exporter-*.jar" | head -1)
-if [ -z "$JAR_FILE" ]; then
-    echo "❌ 未找到构建的 JAR 文件"
-    exit 1
-fi
-
-echo "✅ 构建成功！JAR 文件: $JAR_FILE"
-
-# 构建 Docker 镜像
-echo "🐳 构建 Docker 镜像..."
-docker build -f Dockerfile.java -t beian-exporter:java .
+# 构建 Docker 镜像（多阶段构建，包含编译步骤）
+echo "🐳 构建 Docker 镜像（多阶段构建）..."
+echo "   - 第一阶段：Maven 编译打包"
+echo "   - 第二阶段：运行时镜像构建"
+docker build -t beian-exporter .
 
 echo "✅ Docker 镜像构建完成！"
 
@@ -58,18 +30,27 @@ echo ""
 echo "🎉 构建完成！"
 echo ""
 echo "📋 使用方法:"
-echo "1. 直接运行 JAR:"
-echo "   java -jar $JAR_FILE"
+echo "1. 使用 Docker 直接运行:"
+echo "   docker run -p 8080:8080 beian-exporter"
 echo ""
-echo "2. 使用 Docker:"
-echo "   docker run -p 8080:8080 beian-exporter:java"
+echo "2. 使用 Docker Compose（推荐）:"
+echo "   docker-compose up -d"
 echo ""
-echo "3. 使用 Docker Compose:"
-echo "   docker-compose -f docker-compose.java.yml up -d"
+echo "3. 查看容器日志:"
+echo "   docker-compose logs -f beian-exporter"
 echo ""
 echo "🌐 访问地址:"
 echo "   - 主页: http://localhost:8080"
-echo "   - 指标: http://localhost:8080/metrics"
+echo "   - Prometheus指标: http://localhost:8080/prometheus"
 echo "   - 健康检查: http://localhost:8080/health"
 echo "   - Prometheus: http://localhost:9090"
 echo "   - Grafana: http://localhost:3000 (admin/admin)"
+echo ""
+echo "📁 配置文件:"
+echo "   - 容器内配置: /app/config/application.yml"
+echo "   - 外部配置挂载: ./config/application.yml"
+echo ""
+echo "💡 提示:"
+echo "   - 多阶段构建无需本地安装Java和Maven"
+echo "   - 配置文件已自动复制到容器内"
+echo "   - 可通过挂载./config目录覆盖默认配置"
