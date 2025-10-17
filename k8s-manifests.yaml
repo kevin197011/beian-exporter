@@ -1,0 +1,259 @@
+---
+# Namespace
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: beian-exporter
+  labels:
+    name: beian-exporter
+
+---
+# ConfigMap for application configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: beian-exporter-config
+  namespace: beian-exporter
+data:
+  application.yml: |
+    server:
+      port: 8080
+
+    spring:
+      application:
+        name: beian-exporter
+      thymeleaf:
+        cache: false
+
+    management:
+      endpoints:
+        web:
+          exposure:
+            include: health,info,prometheus
+          base-path: /
+      endpoint:
+        health:
+          show-details: always
+        prometheus:
+          enabled: true
+      metrics:
+        export:
+          prometheus:
+            enabled: true
+            descriptions: true
+
+    beian:
+      check-interval: 21600  # 6小时
+      request-timeout: 30
+      request-delay: 10
+      max-retries: 3
+      domains:
+        - baidu.com
+        - qq.com
+        - taobao.com
+        - jd.com
+        - sina.com.cn
+
+    logging:
+      level:
+        io.devops.beian: INFO
+      pattern:
+        console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+---
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: beian-exporter
+  namespace: beian-exporter
+  labels:
+    app: beian-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: beian-exporter
+  template:
+    metadata:
+      labels:
+        app: beian-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/prometheus"
+    spec:
+      containers:
+      - name: beian-exporter
+        image: beian-exporter:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: JAVA_OPTS
+          value: "-Xmx512m -Xms256m"
+        - name: SPRING_PROFILES_ACTIVE
+          value: "k8s"
+        volumeMounts:
+        - name: config-volume
+          mountPath: /app/config
+          readOnly: true
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+      volumes:
+      - name: config-volume
+        configMap:
+          name: beian-exporter-config
+      restartPolicy: Always
+
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: beian-exporter-service
+  namespace: beian-exporter
+  labels:
+    app: beian-exporter
+spec:
+  selector:
+    app: beian-exporter
+  ports:
+  - name: http
+    port: 8080
+    targetPort: 8080
+    protocol: TCP
+  type: ClusterIP
+
+---
+# Ingress (可选)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: beian-exporter-ingress
+  namespace: beian-exporter
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/ssl-redirect: "false"
+spec:
+  rules:
+  - host: beian-exporter.local  # 修改为你的域名
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: beian-exporter-service
+            port:
+              number: 8080
+
+---
+# ServiceMonitor for Prometheus Operator (可选)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: beian-exporter-monitor
+  namespace: beian-exporter
+  labels:
+    app: beian-exporter
+spec:
+  selector:
+    matchLabels:
+      app: beian-exporter
+  endpoints:
+  - port: http
+    path: /prometheus
+    interval: 30s
+    scrapeTimeout: 10s
+
+---
+# HorizontalPodAutoscaler (可选)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: beian-exporter-hpa
+  namespace: beian-exporter
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: beian-exporter
+  minReplicas: 1
+  maxReplicas: 3
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+
+---
+# PodDisruptionBudget (可选)
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: beian-exporter-pdb
+  namespace: beian-exporter
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: beian-exporter
+
+---
+# NetworkPolicy (可选，增强安全性)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: beian-exporter-netpol
+  namespace: beian-exporter
+spec:
+  podSelector:
+    matchLabels:
+      app: beian-exporter
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          name: monitoring  # 允许监控命名空间访问
+    - namespaceSelector:
+        matchLabels:
+          name: ingress-nginx  # 允许ingress访问
+    ports:
+    - protocol: TCP
+      port: 8080
+  egress:
+  - {}  # 允许所有出站流量（用于查询备案信息）

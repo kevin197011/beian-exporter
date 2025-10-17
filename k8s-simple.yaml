@@ -1,0 +1,97 @@
+---
+# 简化版 Kubernetes 部署配置
+# 适用于快速部署和测试
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: beian-exporter
+
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: beian-exporter-config
+  namespace: beian-exporter
+data:
+  application.yml: |
+    beian:
+      check-interval: 21600
+      request-timeout: 30
+      request-delay: 10
+      max-retries: 3
+      domains:
+        - baidu.com
+        - qq.com
+        - taobao.com
+
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: beian-exporter
+  namespace: beian-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: beian-exporter
+  template:
+    metadata:
+      labels:
+        app: beian-exporter
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/prometheus"
+    spec:
+      containers:
+      - name: beian-exporter
+        image: beian-exporter:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: JAVA_OPTS
+          value: "-Xmx256m -Xms128m"
+        volumeMounts:
+        - name: config
+          mountPath: /app/config
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "50m"
+          limits:
+            memory: "256Mi"
+            cpu: "200m"
+      volumes:
+      - name: config
+        configMap:
+          name: beian-exporter-config
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: beian-exporter
+  namespace: beian-exporter
+  labels:
+    app: beian-exporter
+spec:
+  selector:
+    app: beian-exporter
+  ports:
+  - port: 8080
+    targetPort: 8080
+  type: ClusterIP
