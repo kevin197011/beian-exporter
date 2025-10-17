@@ -85,7 +85,7 @@ spec:
     spec:
       containers:
       - name: beian-exporter
-        image: beian-exporter:latest
+        image: ghcr.io/kevin197011/beian-exporter:latest
         imagePullPolicy: IfNotPresent
         ports:
         - containerPort: 8080
