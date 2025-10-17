@@ -1,0 +1,56 @@
+# Spring Boot 应用配置
+server:
+  port: 8080
+
+# Spring 配置
+spring:
+  application:
+    name: beian-exporter
+  thymeleaf:
+    cache: false
+
+# 管理端点配置
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+      base-path: /
+  endpoint:
+    health:
+      show-details: always
+    prometheus:
+      enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+        descriptions: true
+    distribution:
+      percentiles-histogram:
+        beian_check_duration_seconds: true
+
+# 备案查询配置
+beian:
+  check-interval: 21600  # 检查间隔（秒）- 6小时
+  request-timeout: 30    # 请求超时（秒）
+  request-delay: 10      # 请求间隔（秒）- 增加到10秒避免被封
+  max-retries: 3         # 最大重试次数
+  rate-limit:
+    max-requests-per-minute: 10  # 每分钟最大请求数
+    burst-size: 3               # 突发请求数量
+  domains:
+    - baidu.com
+    - qq.com
+    - taobao.com
+    - jd.com
+    - sina.com.cn
+    - google.com
+
+# 日志配置
+logging:
+  level:
+    io.devops.beian: INFO
+    org.springframework.web.reactive.function.client: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
