@@ -130,17 +130,27 @@
         <div class="actions">
             <h3>🚀 快速操作</h3>
             <button class="btn" onclick="triggerCheck()">立即检查所有域名</button>
-            <a href="/prometheus" class="btn btn-secondary">查看 Prometheus 指标</a>
-            <a href="/health" class="btn btn-secondary">健康检查</a>
-            <a href="/api/config" class="btn btn-secondary">查看配置</a>
+            <a href="/prometheus" class="btn btn-secondary">📈 Prometheus 指标</a>
+            <a href="/health" class="btn btn-secondary">💚 健康检查</a>
+            <a href="/api/config" class="btn btn-secondary">⚙️ 配置信息</a>
         </div>
 
         <div class="info">
-            <h3>📊 可用端点</h3>
-            <a href="/prometheus" class="link">📈 Prometheus 指标</a>
-            <a href="/health" class="link">💚 健康检查</a>
-            <a href="/api/config" class="link">⚙️ 配置信息</a>
-            <a href="/api/check" class="link">🔄 手动触发检查</a>
+            <h3>📋 API 端点</h3>
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 15px;">
+                <div style="background: #e3f2fd; padding: 15px; border-radius: 5px; border-left: 4px solid #2196f3;">
+                    <strong>POST /api/check</strong><br>
+                    <small>手动触发所有域名检查</small>
+                </div>
+                <div style="background: #e8f5e8; padding: 15px; border-radius: 5px; border-left: 4px solid #4caf50;">
+                    <strong>GET /api/check/{domain}</strong><br>
+                    <small>检查单个域名备案状态</small>
+                </div>
+                <div style="background: #fff3e0; padding: 15px; border-radius: 5px; border-left: 4px solid #ff9800;">
+                    <strong>GET /api/config</strong><br>
+                    <small>获取当前配置信息</small>
+                </div>
+            </div>
         </div>
 
         <div class="info">
