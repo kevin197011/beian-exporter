@@ -22,9 +22,12 @@ FROM openjdk:17-jdk-slim
 # 设置工作目录
 WORKDIR /app
 
-# 安装必要的工具
+# 安装必要的工具并设置时区
 RUN apt-get update && apt-get install -y \
     curl \
+    tzdata \
+    && ln -sf /usr/share/zoneinfo/Asia/Hong_Kong /etc/localtime \
+    && echo "Asia/Hong_Kong" > /etc/timezone \
     && rm -rf /var/lib/apt/lists/*
 
 # 创建配置目录
@@ -46,6 +49,7 @@ EXPOSE 8080
 
 # 设置环境变量
 ENV JAVA_OPTS="-Xmx512m -Xms256m"
+ENV TZ=Asia/Hong_Kong
 
 # 健康检查
 HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
