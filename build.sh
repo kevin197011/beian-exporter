@@ -21,9 +21,35 @@ docker --version
 echo "🐳 构建 Docker 镜像（多阶段构建）..."
 echo "   - 第一阶段：Maven 编译打包"
 echo "   - 第二阶段：运行时镜像构建"
-docker build -t beian-exporter .
 
-echo "✅ Docker 镜像构建完成！"
+# 先尝试多阶段构建（Docker Hub 可能临时不可用导致失败）
+set +e
+docker build -t beian-exporter .
+BUILD_STATUS=$?
+set -e
+
+if [ $BUILD_STATUS -ne 0 ]; then
+    echo "⚠️ 多阶段构建失败，尝试使用运行时回退构建（MCR OpenJDK 基础镜像）..."
+
+    # 检查 Maven
+    if ! command -v mvn &> /dev/null; then
+        echo "❌ 未找到 Maven，本地打包 JAR 失败，无法使用回退构建。"
+        echo "👉 解决方案："
+        echo "   1) 安装 Maven 后重试 ./build.sh"
+        echo "   2) 或者先执行 'docker login' 后再重试（可缓解匿名拉取失败）"
+        echo "   3) 或在 Docker 设置中配置 registry-mirrors 后重试"
+        exit 1
+    fi
+
+    echo "📦 本地打包 JAR..."
+    mvn -q -f "$(dirname "$0")/pom.xml" clean package -DskipTests
+
+    echo "🐳 使用 Dockerfile.runtime 构建运行时镜像..."
+    docker build -t beian-exporter -f Dockerfile.runtime .
+    echo "✅ 回退构建完成！"
+else
+    echo "✅ Docker 镜像构建完成！"
+fi
 
 # 显示使用说明
 echo ""

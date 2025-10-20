@@ -22,13 +22,14 @@ management:
     prometheus:
       enabled: true
   metrics:
-    export:
-      prometheus:
-        enabled: true
-        descriptions: true
     distribution:
       percentiles-histogram:
         beian_check_duration_seconds: true
+  prometheus:
+    metrics:
+      export:
+        descriptions: true
+        enabled: true
 
 # 备案查询配置
 beian:
