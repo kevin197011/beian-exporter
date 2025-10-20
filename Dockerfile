@@ -1,10 +1,10 @@
-# 多阶段构建 - 构建阶段（使用 GitHub Container Registry 的 Eclipse Temurin 基础镜像）
-FROM ghcr.io/eclipse-temurin:17-jdk AS builder
+# 多阶段构建 - 构建阶段（使用 Eclipse Temurin 官方镜像）
+FROM eclipse-temurin:17-jdk AS builder
 
 # 设置工作目录
 WORKDIR /build
 
-# 安装 Maven（避免从 Docker Hub 拉取 Maven 镜像）
+# 安装 Maven
 RUN apt-get update && apt-get install -y maven && rm -rf /var/lib/apt/lists/*
 
 # 复制 Maven 配置文件
@@ -19,8 +19,8 @@ COPY src ./src
 # 编译和打包应用
 RUN mvn clean package -DskipTests -B
 
-# 运行阶段（使用 GitHub Container Registry 的 Eclipse Temurin JRE）
-FROM ghcr.io/eclipse-temurin:17-jre
+# 运行阶段（使用 Eclipse Temurin JRE）
+FROM eclipse-temurin:17-jre
 
 # 设置工作目录
 WORKDIR /app
